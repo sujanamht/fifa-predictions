@@ -1,0 +1,35 @@
+# Environment secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Data files (can be large)
+data/processed/
+*.parquet
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# Airflow
+airflow/logs/
+airflow/plugins/
+
+# Model artifacts
+models/*.pkl
+
+# OS
+.DS_Store
+Thumbs.db

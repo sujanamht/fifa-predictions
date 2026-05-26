@@ -1,0 +1,59 @@
+# ============================================================
+# FIFA Pipeline — Pinned Dependencies
+# Python 3.10+  |  Last verified: June 2026
+#
+# WINDOWS / PYSPARK NOTE:
+#   PySpark on Windows requires Java 8 or 11 (not 17+).
+#   Download from: https://adoptium.net/
+#   Set JAVA_HOME env var to your JDK install path.
+#   Also install winutils.exe for Hadoop on Windows:
+#   https://github.com/cdarlint/winutils
+# ============================================================
+
+# --- Core data processing ---
+pandas==2.2.2
+numpy==1.26.4
+pyarrow==15.0.2          # Required by PySpark for parquet read/write
+
+# --- PySpark (Spark 3.5.x, Python 3.10 compatible) ---
+pyspark==3.5.1
+
+# --- Database ---
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9   # PostgreSQL adapter (binary = no C compile needed)
+
+# --- dbt ---
+dbt-core==1.8.3
+dbt-postgres==1.8.3      # dbt adapter for PostgreSQL
+
+# --- Apache Airflow (2.9.x — stable LTS) ---
+# NOTE: Airflow has many sub-deps; install via constraints file for reproducibility:
+# pip install apache-airflow==2.9.2 --constraint \
+#   https://raw.githubusercontent.com/apache/airflow/constraints-2.9.2/constraints-3.10.txt
+apache-airflow==2.9.2
+
+# --- ML ---
+scikit-learn==1.4.2
+xgboost==2.0.3
+joblib==1.4.2             # Model serialization (save/load .pkl)
+
+# --- Time series (optional enrichment) ---
+prophet==1.1.5
+
+# --- Visualization ---
+matplotlib==3.9.0
+plotly==5.22.0
+kaleido==0.2.1            # Required by plotly to export static images
+
+# --- Streamlit dashboard ---
+streamlit==1.35.0
+
+# --- Jupyter ---
+jupyter==1.0.0
+ipykernel==6.29.4
+notebook==7.2.0
+
+# --- Utilities ---
+python-dotenv==1.0.1      # Load .env files
+requests==2.32.3
+tqdm==4.66.4
