@@ -1,0 +1,46 @@
+# ============================================================
+# dbt Connection Profile — FIFA Pipeline
+# ============================================================
+# IMPORTANT: dbt normally looks for this file at ~/.dbt/profiles.yml
+#
+# To use THIS file instead (recommended for portability):
+#   dbt run --profiles-dir .
+#   dbt test --profiles-dir .
+#
+# OR copy it to your home directory:
+#   Windows: copy profiles.yml %USERPROFILE%\.dbt\profiles.yml
+#   Mac/Linux: cp profiles.yml ~/.dbt/profiles.yml
+#
+# Secrets are read from environment variables (set in .env).
+# The {{ env_var() }} syntax is built-in to dbt.
+# ============================================================
+
+fifa_pipeline:
+  target: dev
+  outputs:
+
+    # ---- Local development (Docker Postgres on localhost) ----
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'fifa_user') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'fifa_pass123') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'fifa_db') }}"
+      schema: public        # Default schema; staging/marts schemas set per-model
+      threads: 4            # Run 4 models in parallel
+      keepalives_idle: 0    # Disable TCP keepalive (avoids timeouts on Windows)
+      connect_timeout: 10
+
+    # ---- Production (same Postgres inside Docker network) ----
+    # When running dbt INSIDE Docker, use 'postgres' as the host
+    # (Docker service name from docker-compose.yml, not 'localhost')
+    prod:
+      type: postgres
+      host: postgres        # Docker Compose service name
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER', 'fifa_user') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'fifa_pass123') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'fifa_db') }}"
+      schema: public
+      threads: 4

@@ -1,0 +1,171 @@
+version: 2
+
+# ============================================================
+# Sources — raw tables loaded by Phase 1 notebook
+# ============================================================
+sources:
+  - name: raw_data
+    description: >
+      Raw tables ingested from CSV files into PostgreSQL by notebook
+      01_ingestion.ipynb. These are the starting point for all transformations.
+    schema: public
+    tables:
+      - name: raw_results
+        description: >
+          International football match results from 1872 to present.
+          Contains every recorded full international match.
+        columns:
+          - name: date
+            description: "Match date as VARCHAR 'YYYY-MM-DD'"
+          - name: home_team
+            description: "Name of the home team"
+          - name: away_team
+            description: "Name of the away team"
+          - name: home_score
+            description: "Goals scored by the home team"
+          - name: away_score
+            description: "Goals scored by the away team"
+          - name: tournament
+            description: "Tournament or competition name"
+          - name: city
+            description: "City where the match was played"
+          - name: country
+            description: "Country where the match was played"
+          - name: neutral
+            description: "Whether match was played at a neutral venue ('TRUE'/'FALSE')"
+
+      - name: raw_goalscorers
+        description: >
+          Individual goal events per match — who scored, when, and
+          whether it was an own goal or penalty.
+
+      - name: raw_shootouts
+        description: >
+          Penalty shootout outcomes for matches decided by penalty shootout.
+
+      - name: raw_former_names
+        description: >
+          Mapping of historical team names to current names
+          (e.g. 'West Germany' → 'Germany').
+
+# ============================================================
+# Staging Models
+# ============================================================
+models:
+
+  - name: stg_match_results
+    description: >
+      Cleaned and standardized international match results.
+      Casts types, derives match result (W/D/L), adds goal_diff.
+      Filters out rows with null scores or team names.
+      This is the foundation for all downstream models.
+    columns:
+      - name: match_date
+        description: "Match date (DATE type)"
+        tests:
+          - not_null
+      - name: home_team
+        description: "Home team name (trimmed)"
+        tests:
+          - not_null
+      - name: away_team
+        description: "Away team name (trimmed)"
+        tests:
+          - not_null
+      - name: home_score
+        description: "Goals scored by home team (INTEGER)"
+        tests:
+          - not_null
+      - name: away_score
+        description: "Goals scored by away team (INTEGER)"
+        tests:
+          - not_null
+      - name: tournament
+        description: "Tournament or competition name"
+      - name: is_neutral
+        description: "True if match was played at a neutral venue"
+      - name: result
+        description: >
+          Match result from home team's perspective.
+          W = home win, D = draw, L = home loss.
+          This is the ML target variable.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['W', 'D', 'L']
+      - name: goal_diff
+        description: >
+          home_score minus away_score.
+          Positive = home team dominated, negative = away team dominated.
+        tests:
+          - not_null
+
+  - name: stg_rankings
+    description: >
+      Derived team strength scores based on the last 12 months of results.
+      Uses a FIFA-style points formula: (wins*3 + draws) / (total_matches*3) * 100.
+      Serves as a proxy for official FIFA rankings since the dataset has no rankings CSV.
+    columns:
+      - name: team
+        description: "Team name"
+        tests:
+          - not_null
+          - unique
+      - name: total_matches
+        description: "Total matches played in the last 12 months"
+        tests:
+          - not_null
+      - name: total_wins
+        description: "Wins in the last 12 months"
+        tests:
+          - not_null
+      - name: total_draws
+        description: "Draws in the last 12 months"
+        tests:
+          - not_null
+      - name: strength_score
+        description: >
+          Ranking proxy score from 0–100. Higher = stronger.
+          100 = won every game, 0 = lost every game.
+        tests:
+          - not_null
+      - name: derived_rank
+        description: "Rank position ordered by strength_score (1 = strongest team)"
+        tests:
+          - not_null
+          - unique
+
+  - name: stg_fixtures
+    description: >
+      2026 FIFA World Cup group stage fixtures.
+      Loaded from the wc2026_fixtures seed file.
+      Update dbt/seeds/wc2026_fixtures.csv with official fixtures.
+    columns:
+      - name: fixture_id
+        description: "Unique fixture identifier (e.g. WC26-GA-01)"
+        tests:
+          - not_null
+          - unique
+      - name: group_name
+        description: "World Cup group (A through H for this dataset)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+                       'I', 'J', 'K', 'L']  # 2026 has up to 12 groups
+      - name: home_team
+        description: "First listed / home team"
+        tests:
+          - not_null
+      - name: away_team
+        description: "Second listed / away team"
+        tests:
+          - not_null
+      - name: match_date
+        description: "Scheduled match date"
+        tests:
+          - not_null
+      - name: venue
+        description: "Stadium name"
+      - name: city
+        description: "Host city"

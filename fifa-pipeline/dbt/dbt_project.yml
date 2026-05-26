@@ -1,0 +1,48 @@
+name: 'fifa_pipeline'
+version: '1.0.0'
+config-version: 2
+
+# The profile that dbt uses to connect to PostgreSQL.
+# Must match the key name in profiles.yml (or ~/.dbt/profiles.yml).
+profile: 'fifa_pipeline'
+
+# Where dbt looks for models, seeds, tests, etc.
+model-paths:    ["models"]
+seed-paths:     ["seeds"]
+test-paths:     ["tests"]
+analysis-paths: ["analyses"]
+macro-paths:    ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Where dbt writes compiled SQL and run artifacts
+target-path:  "target"
+clean-targets: ["target", "dbt_packages"]
+
+# ============================================================
+# Model configuration
+# ============================================================
+# Staging models → views (cheap, rebuilt on each dbt run)
+# Mart models    → tables (materialized, faster for downstream queries)
+models:
+  fifa_pipeline:
+    staging:
+      +materialized: view
+      +schema: staging     # Written to the 'staging' schema in Postgres
+    marts:
+      +materialized: table
+      +schema: marts       # Written to the 'marts' schema in Postgres
+
+# ============================================================
+# Seed configuration
+# ============================================================
+seeds:
+  fifa_pipeline:
+    wc2026_fixtures:
+      +column_types:
+        fixture_id: varchar
+        group_name: varchar
+        home_team: varchar
+        away_team: varchar
+        match_date: date
+        venue: varchar
+        city: varchar
