@@ -1,65 +1,87 @@
 version: "3.9"
 
 # ============================================================
-# FIFA Pipeline — Docker Compose
-# Services: PostgreSQL | Airflow Webserver | Airflow Scheduler
-#           | Streamlit Dashboard
+# FIFA WC 2026 Pipeline — Final Docker Compose
 #
-# Start everything:  docker-compose up --build
-# Stop everything:   docker-compose down
-# Wipe DB volumes:   docker-compose down -v
+# Services:
+#   postgres          → PostgreSQL 15  (port 5432)
+#   airflow-init      → One-time DB migration + user creation
+#   airflow-webserver → Airflow UI      (port 8080)
+#   airflow-scheduler → Runs DAG tasks
+#   streamlit         → Dashboard       (port 8501)
+#
+# Start everything:   docker-compose up --build
+# Stop everything:    docker-compose down
+# Destroy volumes:    docker-compose down -v   (WARNING: deletes all data)
+#
+# Access:
+#   Airflow UI  → http://localhost:8080  (admin / admin)
+#   Dashboard   → http://localhost:8501
+#   Postgres    → localhost:5432
 # ============================================================
 
+# ---- Shared Airflow config (avoids repeating for each service) ----
 x-airflow-common: &airflow-common
-  # Use the official Airflow image with Python 3.10
-  image: apache/airflow:2.9.2-python3.10
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow   # Custom image with our Python deps installed
   env_file:
     - .env
   environment:
-    # Point Airflow at our shared Postgres instance
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://fifa_user:fifa_pass123@postgres:5432/fifa_db
-    AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__CORE__FERNET_KEY: 46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLt0nIigo=
-    AIRFLOW__WEBSERVER__SECRET_KEY: supersecretkey
-    AIRFLOW__CORE__LOAD_EXAMPLES: "false"   # Don't clutter UI with example DAGs
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:    &airflow_db_conn
+      postgresql+psycopg2://fifa_user:fifa_pass123@postgres:5432/fifa_db
+    AIRFLOW__CORE__EXECUTOR:                LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY:              46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLt0nIigo=
+    AIRFLOW__WEBSERVER__SECRET_KEY:         supersecretkey
+    AIRFLOW__CORE__LOAD_EXAMPLES:           "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+    # Let Airflow tasks find our DB
+    DATABASE_URL: postgresql://fifa_user:fifa_pass123@postgres:5432/fifa_db
+    POSTGRES_HOST:     postgres    # ← 'postgres' (Docker service name), NOT 'localhost'
+    POSTGRES_PORT:     "5432"
+    POSTGRES_DB:       fifa_db
+    POSTGRES_USER:     fifa_user
+    POSTGRES_PASSWORD: fifa_pass123
   volumes:
-    - ./airflow/dags:/opt/airflow/dags          # Our custom DAGs
-    - ./data:/opt/airflow/data                  # Shared data folder
-    - ./models:/opt/airflow/models              # Trained model artifacts
-    - ./dbt:/opt/airflow/dbt                    # dbt project
+    - ./airflow/dags:/opt/airflow/dags          # Our DAG files
+    - ./data:/opt/airflow/data                  # Raw CSVs + processed parquet
+    - ./models:/opt/airflow/models              # Model artifacts (.pkl, .json)
+    - ./dbt:/opt/airflow/dbt                    # dbt project for DAG tasks
+    - ./drivers:/opt/airflow/drivers            # PostgreSQL JDBC jar
     - airflow_logs:/opt/airflow/logs
   depends_on:
     postgres:
-      condition: service_healthy               # Wait until Postgres is ready
+      condition: service_healthy
 
 services:
 
-  # ----------------------------------------------------------
-  # PostgreSQL — primary storage for raw tables, features, predictions
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
+  # PostgreSQL — primary datastore for everything
+  # ------------------------------------------------------------
   postgres:
     image: postgres:15.6
     container_name: fifa_postgres
     env_file:
       - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"                            # Expose to host so notebooks can connect
+      - "5432:5432"                    # Exposed so local notebooks can connect
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Persist DB across restarts
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 15s
+    restart: unless-stopped
 
-  # ----------------------------------------------------------
-  # Airflow — DB migration + user creation (runs once then exits)
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
+  # Airflow Init — runs ONCE: DB migration + admin user creation
+  # ------------------------------------------------------------
   airflow-init:
     <<: *airflow-common
     container_name: fifa_airflow_init
@@ -67,20 +89,22 @@ services:
     command:
       - -c
       - |
-        airflow db migrate &&
+        echo "Running airflow db migrate..."
+        airflow db migrate
+        echo "Creating admin user..."
         airflow users create \
           --username admin \
           --password admin \
           --firstname FIFA \
           --lastname Admin \
           --role Admin \
-          --email admin@example.com
+          --email admin@fifa-pipeline.local || true
+        echo "Init complete."
     restart: "no"
 
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   # Airflow Webserver — UI at http://localhost:8080
-  # Login: admin / admin
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   airflow-webserver:
     <<: *airflow-common
     container_name: fifa_airflow_webserver
@@ -90,17 +114,17 @@ services:
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 5
-      start_period: 30s
+      start_period: 60s
     depends_on:
       airflow-init:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # ----------------------------------------------------------
-  # Airflow Scheduler — executes DAG tasks
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
+  # Airflow Scheduler — picks up and runs DAG tasks
+  # ------------------------------------------------------------
   airflow-scheduler:
     <<: *airflow-common
     container_name: fifa_airflow_scheduler
@@ -110,26 +134,40 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   # Streamlit Dashboard — http://localhost:8501
-  # ----------------------------------------------------------
+  # ------------------------------------------------------------
   streamlit:
     image: python:3.10-slim
     container_name: fifa_streamlit
     working_dir: /app
     volumes:
-      - ./dashboard:/app                        # Dashboard source code
-      - ./models:/app/models                    # Access trained model
-      - ./.env:/app/.env                        # Secrets
+      - ./dashboard:/app                   # Dashboard source code
+      - ./models:/app/models               # Trained model artifacts
+      - ./.env:/app/.env                   # Secrets (DB connection)
     env_file:
       - .env
     environment:
-      # Inside Docker, "postgres" resolves to the postgres container
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: postgres              # Connect to Docker postgres service
     command: >
-      bash -c "pip install streamlit==1.35.0 plotly==5.22.0 pandas==2.2.2
-               psycopg2-binary==2.9.9 sqlalchemy==2.0.30 python-dotenv==1.0.1 --quiet &&
-               streamlit run app.py --server.port=8501 --server.address=0.0.0.0"
+      bash -c "
+        pip install --quiet --no-cache-dir
+          streamlit==1.35.0
+          plotly==5.22.0
+          pandas==2.2.2
+          psycopg2-binary==2.9.9
+          sqlalchemy==2.0.30
+          python-dotenv==1.0.1
+          joblib==1.4.2
+          xgboost==2.0.3
+          scikit-learn==1.4.2
+          numpy==1.26.4 &&
+        streamlit run app.py
+          --server.port=8501
+          --server.address=0.0.0.0
+          --server.headless=true
+          --browser.gatherUsageStats=false
+      "
     ports:
       - "8501:8501"
     depends_on:
@@ -137,6 +175,10 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+# ============================================================
+# Named volumes (persist across docker-compose down)
+# Use docker-compose down -v to delete them
+# ============================================================
 volumes:
-  postgres_data:   # Named volume — survives docker-compose down (not down -v)
+  postgres_data:
   airflow_logs:
