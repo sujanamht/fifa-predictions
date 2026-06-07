@@ -1,0 +1,73 @@
+match_id,home_team,away_team,group,match_date
+1,Mexico,South Africa,A,2026-06-11
+2,South Korea,Czechia,A,2026-06-11
+3,Canada,Bosnia and Herzegovina,B,2026-06-12
+4,USA,Paraguay,D,2026-06-12
+5,Qatar,Switzerland,B,2026-06-13
+6,Brazil,Morocco,C,2026-06-13
+7,Haiti,Scotland,C,2026-06-13
+8,Australia,Turkiye,D,2026-06-14
+9,Germany,Curacao,E,2026-06-14
+10,Netherlands,Japan,F,2026-06-14
+11,Ivory Coast,Ecuador,E,2026-06-14
+12,Sweden,Tunisia,F,2026-06-14
+13,Spain,Cape Verde,H,2026-06-15
+14,Belgium,Egypt,G,2026-06-15
+15,Saudi Arabia,Uruguay,H,2026-06-15
+16,Iran,New Zealand,G,2026-06-15
+17,France,Senegal,I,2026-06-16
+18,Iraq,Norway,I,2026-06-16
+19,Argentina,Algeria,J,2026-06-16
+20,Austria,Jordan,J,2026-06-17
+21,Portugal,DR Congo,K,2026-06-17
+22,England,Croatia,L,2026-06-17
+23,Ghana,Panama,L,2026-06-17
+24,Uzbekistan,Colombia,K,2026-06-17
+25,Czechia,South Africa,A,2026-06-18
+26,Switzerland,Bosnia and Herzegovina,B,2026-06-18
+27,Canada,Qatar,B,2026-06-18
+28,Mexico,South Korea,A,2026-06-18
+29,USA,Australia,D,2026-06-19
+30,Scotland,Morocco,C,2026-06-19
+31,Brazil,Haiti,C,2026-06-19
+32,Turkiye,Paraguay,D,2026-06-19
+33,Netherlands,Sweden,F,2026-06-20
+34,Germany,Ivory Coast,E,2026-06-20
+35,Ecuador,Curacao,E,2026-06-20
+36,Tunisia,Japan,F,2026-06-21
+37,Spain,Saudi Arabia,H,2026-06-21
+38,Belgium,Iran,G,2026-06-21
+39,Uruguay,Cape Verde,H,2026-06-21
+40,New Zealand,Egypt,G,2026-06-21
+41,Argentina,Austria,J,2026-06-22
+42,France,Iraq,I,2026-06-22
+43,Norway,Senegal,I,2026-06-22
+44,Jordan,Algeria,J,2026-06-22
+45,Portugal,Uzbekistan,K,2026-06-23
+46,England,Ghana,L,2026-06-23
+47,Panama,Croatia,L,2026-06-23
+48,Colombia,DR Congo,K,2026-06-23
+49,Switzerland,Canada,B,2026-06-24
+50,Bosnia and Herzegovina,Qatar,B,2026-06-24
+51,Scotland,Brazil,C,2026-06-24
+52,Morocco,Haiti,C,2026-06-24
+53,Czechia,Mexico,A,2026-06-24
+54,South Africa,South Korea,A,2026-06-24
+55,Curacao,Ivory Coast,E,2026-06-25
+56,Ecuador,Germany,E,2026-06-25
+57,Japan,Sweden,F,2026-06-25
+58,Tunisia,Netherlands,F,2026-06-25
+59,Turkiye,USA,D,2026-06-25
+60,Paraguay,Australia,D,2026-06-25
+61,Norway,France,I,2026-06-26
+62,Senegal,Iraq,I,2026-06-26
+63,Cape Verde,Saudi Arabia,H,2026-06-26
+64,Uruguay,Spain,H,2026-06-26
+65,Egypt,Iran,G,2026-06-26
+66,New Zealand,Belgium,G,2026-06-26
+67,Panama,England,L,2026-06-27
+68,Croatia,Ghana,L,2026-06-27
+69,Colombia,Portugal,K,2026-06-27
+70,DR Congo,Uzbekistan,K,2026-06-27
+71,Algeria,Austria,J,2026-06-27
+72,Jordan,Argentina,J,2026-06-27
