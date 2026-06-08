@@ -109,9 +109,9 @@ def ingest_raw_data(**context):
     log.info("ingest_raw_data complete.")
 
 
-# ============================================================
+
 # TASK 2 — PySpark processing (clean + build match_features)
-# ============================================================
+
 def spark_process(**context):
     """
     Runs PySpark to clean raw CSVs and build the match_features table.
@@ -123,16 +123,24 @@ def spark_process(**context):
     """
     import sys
 
-    # Set JAVA_HOME inside Docker (Java is pre-installed in the image)
-    java_candidates = [
-        "/usr/lib/jvm/java-11-openjdk-amd64",
-        "/usr/lib/jvm/java-11-openjdk",
-        "/usr/lib/jvm/java-8-openjdk-amd64",
-    ]
-    for j in java_candidates:
-        if Path(j).exists():
-            os.environ["JAVA_HOME"] = j
-            break
+# Set JAVA_HOME if not already set (Docker sets it; locals may not)
+    if not os.environ.get("JAVA_HOME"):
+        import shutil
+        java_candidates = [
+            "/usr/lib/jvm/java-11-openjdk-amd64",
+            "/usr/lib/jvm/java-11-openjdk",
+            "/usr/lib/jvm/java-8-openjdk-amd64",
+            "/opt/homebrew/opt/openjdk@11/libexec/openjdk.jdk/Contents/Home",
+            "/usr/local/opt/openjdk@11/libexec/openjdk.jdk/Contents/Home",
+        ]
+        for j in java_candidates:
+            if Path(j).exists():
+                os.environ["JAVA_HOME"] = j
+                break
+        else:
+            java_bin = shutil.which("java")
+            if java_bin:
+                os.environ["JAVA_HOME"] = str(Path(java_bin).resolve().parents[1])
 
     from pyspark.sql import SparkSession
     from pyspark.sql import functions as F
@@ -308,9 +316,9 @@ def spark_process(**context):
     log.info("spark_process complete.")
 
 
-# ============================================================
+
 # TASK 3 — dbt run (build staging views + mart tables)
-# ============================================================
+
 def run_dbt_models(**context):
     """
     Runs: dbt seed → dbt run
@@ -429,7 +437,7 @@ def retrain_model(**context):
         subsample=0.8, colsample_bytree=0.8,
         objective="multi:softprob", num_class=3,
         eval_metric="mlogloss", early_stopping_rounds=20,
-        use_label_encoder=False, random_state=42, n_jobs=-1,
+        random_state=42, n_jobs=-1,
     )
     model.fit(X_train_s, y_train, eval_set=[(X_test_s, y_test)], verbose=False)
 

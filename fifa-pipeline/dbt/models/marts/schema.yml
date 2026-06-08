@@ -186,29 +186,79 @@ models:
         tests:
           - not_null
 
-      - name: home_strength_score
-        description: "Home team derived ranking score (0–100)"
+      - name: home_draw_rate_last10
+        description: "Home team draw fraction in last 10 matches (0.0–1.0)"
         tests:
           - not_null
 
-      - name: away_strength_score
-        description: "Away team derived ranking score (0–100)"
+      - name: away_draw_rate_last10
+        description: "Away team draw fraction in last 10 matches (0.0–1.0)"
         tests:
           - not_null
 
-      - name: h2h_total_matches
+      - name: home_avg_goals_scored_last20
+        description: "Home team average goals scored per match in last 20 matches"
+        tests:
+          - not_null
+
+      - name: away_avg_goals_scored_last20
+        description: "Away team average goals scored per match in last 20 matches"
+        tests:
+          - not_null
+
+      - name: home_avg_goals_conceded_last20
+        description: "Home team average goals conceded per match in last 20 matches"
+        tests:
+          - not_null
+
+      - name: away_avg_goals_conceded_last20
+        description: "Away team average goals conceded per match in last 20 matches"
+        tests:
+          - not_null
+
+      - name: home_avg_goal_diff_last10
+        description: "Home team average goal differential in last 10 matches"
+        tests:
+          - not_null
+
+      - name: away_avg_goal_diff_last10
+        description: "Away team average goal differential in last 10 matches"
+        tests:
+          - not_null
+
+      - name: home_ranking_proxy
+        description: "Home team derived ranking score (0–100, FIFA-style points %)"
+        tests:
+          - not_null
+
+      - name: away_ranking_proxy
+        description: "Away team derived ranking score (0–100, FIFA-style points %)"
+        tests:
+          - not_null
+
+      - name: home_ranking_change
+        description: "Home team ranking change (currently 0.0 — placeholder for future live rankings feed)"
+        tests:
+          - not_null
+
+      - name: away_ranking_change
+        description: "Away team ranking change (currently 0.0 — placeholder for future live rankings feed)"
+        tests:
+          - not_null
+
+      - name: h2h_total
         description: "Total prior meetings between these two teams"
         tests:
           - not_null
 
-      - name: home_h2h_win_rate
-        description: "Home team's historical win rate vs this specific opponent"
+      - name: h2h_team_a_win_rate
+        description: "Win rate of the alphabetically-first team (team_a) across all H2H matches"
         tests:
           - not_null
 
       - name: strength_diff
         description: >
-          home_strength_score minus away_strength_score.
+          home_ranking_proxy minus away_ranking_proxy.
           Positive = home team is stronger on this proxy ranking.
         tests:
           - not_null

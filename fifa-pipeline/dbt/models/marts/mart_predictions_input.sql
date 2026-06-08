@@ -49,16 +49,23 @@ with_home_features as (
         f.venue,
         f.city,
 
-        -- Home team form
+        -- Home team form (last-10)
         coalesce(tf.win_rate_last10,           0.33)    as home_win_rate_last10,
-        coalesce(tf.avg_goals_scored_last10,   1.2)     as home_avg_goals_scored,
-        coalesce(tf.avg_goals_conceded_last10, 1.2)     as home_avg_goals_conceded,
-        coalesce(tf.avg_goal_diff_last10,      0.0)     as home_avg_goal_diff,
+        coalesce(
+            tf.draws_last10::numeric / nullif(tf.matches_last10, 0),
+            0.33
+        )                                               as home_draw_rate_last10,
+        coalesce(tf.avg_goal_diff_last10,      0.0)     as home_avg_goal_diff_last10,
         coalesce(tf.goal_diff_trend,           0.0)     as home_goal_diff_trend,
         coalesce(tf.matches_last10,            0)       as home_matches_available,
 
-        -- Home team ranking
-        coalesce(r.strength_score,  50.0)               as home_strength_score,
+        -- Home team form (last-20 — broader window for goals)
+        coalesce(tf.avg_goals_scored_last20,   1.2)     as home_avg_goals_scored_last20,
+        coalesce(tf.avg_goals_conceded_last20, 1.2)     as home_avg_goals_conceded_last20,
+
+        -- Home team ranking proxy
+        coalesce(r.strength_score,  50.0)               as home_ranking_proxy,
+        0.0                                             as home_ranking_change,
         coalesce(r.derived_rank,    100)                as home_derived_rank,
         coalesce(r.avg_goals_scored, 1.2)               as home_rank_avg_goals
 
@@ -74,16 +81,23 @@ with_away_features as (
     select
         wh.*,
 
-        -- Away team form
+        -- Away team form (last-10)
         coalesce(tf.win_rate_last10,           0.33)    as away_win_rate_last10,
-        coalesce(tf.avg_goals_scored_last10,   1.2)     as away_avg_goals_scored,
-        coalesce(tf.avg_goals_conceded_last10, 1.2)     as away_avg_goals_conceded,
-        coalesce(tf.avg_goal_diff_last10,      0.0)     as away_avg_goal_diff,
+        coalesce(
+            tf.draws_last10::numeric / nullif(tf.matches_last10, 0),
+            0.33
+        )                                               as away_draw_rate_last10,
+        coalesce(tf.avg_goal_diff_last10,      0.0)     as away_avg_goal_diff_last10,
         coalesce(tf.goal_diff_trend,           0.0)     as away_goal_diff_trend,
         coalesce(tf.matches_last10,            0)       as away_matches_available,
 
-        -- Away team ranking
-        coalesce(r.strength_score,  50.0)               as away_strength_score,
+        -- Away team form (last-20)
+        coalesce(tf.avg_goals_scored_last20,   1.2)     as away_avg_goals_scored_last20,
+        coalesce(tf.avg_goals_conceded_last20, 1.2)     as away_avg_goals_conceded_last20,
+
+        -- Away team ranking proxy
+        coalesce(r.strength_score,  50.0)               as away_ranking_proxy,
+        0.0                                             as away_ranking_change,
         coalesce(r.derived_rank,    100)                as away_derived_rank,
         coalesce(r.avg_goals_scored, 1.2)               as away_rank_avg_goals
 
@@ -100,25 +114,16 @@ with_h2h as (
     select
         wa.*,
 
-        coalesce(h.total_matches,     0)                as h2h_total_matches,
-        coalesce(h.team_a_wins,       0)                as h2h_team_a_wins,
-        coalesce(h.team_b_wins,       0)                as h2h_team_b_wins,
-        coalesce(h.draws,             0)                as h2h_draws,
+        coalesce(h.total_matches,      0)               as h2h_total,
+        coalesce(h.team_a_wins,        0)               as h2h_team_a_wins,
+        coalesce(h.team_b_wins,        0)               as h2h_team_b_wins,
+        coalesce(h.draws,              0)               as h2h_draws,
         coalesce(h.world_cup_meetings, 0)               as h2h_wc_meetings,
 
-        -- H2H win rate FROM HOME TEAM'S PERSPECTIVE
-        -- If home_team is alphabetically first (= team_a), use team_a_win_rate
-        -- Otherwise use team_b_win_rate
-        coalesce(
-            case
-                when least(wa.home_team, wa.away_team) = wa.home_team
-                then h.team_a_win_rate   -- home team is team_a
-                else h.team_b_win_rate   -- home team is team_b
-            end,
-            0.33   -- Default = equal chance (1/3) if no history
-        )                                               as home_h2h_win_rate,
+        -- team_a_win_rate is always the alphabetically-first team's win rate
+        coalesce(h.team_a_win_rate,   0.33)             as h2h_team_a_win_rate,
 
-        coalesce(h.draw_rate, 0.25)                    as h2h_draw_rate
+        coalesce(h.draw_rate,         0.25)             as h2h_draw_rate
 
     from with_away_features wa
     left join h2h h on (
@@ -135,14 +140,14 @@ final as (
         *,
 
         -- Relative strength: positive = home team is stronger
-        home_strength_score - away_strength_score       as strength_diff,
+        home_ranking_proxy - away_ranking_proxy         as strength_diff,
 
         -- Ranking difference: positive = home team ranks higher (lower rank number = better)
         away_derived_rank - home_derived_rank           as rank_diff,
 
         -- Goal scoring differential
-        home_avg_goals_scored - away_avg_goals_conceded as home_attack_vs_away_defence,
-        away_avg_goals_scored - home_avg_goals_conceded as away_attack_vs_home_defence
+        home_avg_goals_scored_last20 - away_avg_goals_conceded_last20 as home_attack_vs_away_defence,
+        away_avg_goals_scored_last20 - home_avg_goals_conceded_last20 as away_attack_vs_home_defence
 
     from with_h2h
 
