@@ -55,7 +55,7 @@ DB_USER = os.getenv("POSTGRES_USER", "fifa_user")
 DB_PASS = os.getenv("POSTGRES_PASSWORD")
 DB_URL  = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-MODELS_DIR = os.path.join(os.path.dirname(__file__), 'model')
+MODELS_DIR = Path(__file__).parent.parent / "models"
 
 # ============================================================
 # Cached resource loaders (run once, stay in memory)
