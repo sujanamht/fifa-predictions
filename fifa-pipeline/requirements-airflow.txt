@@ -15,10 +15,6 @@ pyspark==3.5.1
 sqlalchemy==1.4.52
 psycopg2-binary==2.9.9
 
-# dbt (task 3/4 — dbt_run, dbt_test)
-dbt-core==1.7.19
-dbt-postgres==1.7.19
-
 # ML (tasks 5/6 — retrain_model, update_predictions)
 scikit-learn==1.4.2
 xgboost==2.1.1

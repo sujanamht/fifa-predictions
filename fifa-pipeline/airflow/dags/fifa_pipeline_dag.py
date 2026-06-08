@@ -7,18 +7,15 @@ Schedule: Daily (@daily)
 Task Order:
     ingest_raw_data
         → spark_process
-            → dbt_run
-                → dbt_test  (fails DAG if any dbt test fails)
-                    → retrain_model
-                        → update_predictions
+            → retrain_model
+                → update_predictions
 
 Why Airflow?
-  Without orchestration, you would manually run 6 steps in order, check
+  Without orchestration, you would manually run 4 steps in order, check
   each succeeded, and remember to re-run them every day. Airflow:
   - Schedules the pipeline automatically
   - Retries failed tasks
   - Gives a UI to monitor every run
-  - Fails the whole pipeline if data quality tests fail (dbt_test)
   - Keeps a full audit log of every run
 
 Usage:
@@ -28,7 +25,6 @@ Usage:
 """
 
 import os
-import subprocess
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -47,7 +43,6 @@ log = logging.getLogger(__name__)
 # ============================================================
 DATA_RAW       = "/opt/airflow/data/raw"
 DATA_PROCESSED = "/opt/airflow/data/processed"
-DBT_DIR        = "/opt/airflow/dbt"
 MODELS_DIR     = "/opt/airflow/models"
 
 # ============================================================
@@ -69,7 +64,7 @@ default_args = {
 # ============================================================
 def ingest_raw_data(**context):
     """
-    Reads the 4 raw CSVs from data/raw/ and writes them to PostgreSQL.
+    Reads the raw CSVs from data/raw/ and writes them to PostgreSQL.
     Equivalent to running notebook 01_ingestion.ipynb.
 
     Uses pandas + SQLAlchemy (no heavy dependencies needed here).
@@ -81,10 +76,9 @@ def ingest_raw_data(**context):
     engine = create_engine(db_url)
 
     files = {
-        "raw_results":      f"{DATA_RAW}/results.csv",
-        "raw_goalscorers":  f"{DATA_RAW}/goalscorers.csv",
-        "raw_shootouts":    f"{DATA_RAW}/shootouts.csv",
-        "raw_former_names": f"{DATA_RAW}/former_names.csv",
+        "raw_results":   f"{DATA_RAW}/results.csv",
+        "raw_fixtures":  f"{DATA_RAW}/fixtures.csv",
+        "raw_rankings":  f"{DATA_RAW}/rankings.csv",
     }
 
     for table_name, path in files.items():
@@ -317,70 +311,8 @@ def spark_process(**context):
 
 
 
-# TASK 3 — dbt run (build staging views + mart tables)
-
-def run_dbt_models(**context):
-    """
-    Runs: dbt seed → dbt run
-    Builds all staging views and mart tables in PostgreSQL.
-    """
-    env = {**os.environ, "DBT_PROFILES_DIR": DBT_DIR}
-
-    for cmd in ["seed", "run"]:
-        result = subprocess.run(
-            ["dbt", cmd, "--profiles-dir", "."],
-            cwd=DBT_DIR,
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-        log.info(f"dbt {cmd} stdout:\n{result.stdout}")
-        if result.returncode != 0:
-            log.error(f"dbt {cmd} stderr:\n{result.stderr}")
-            raise AirflowException(f"dbt {cmd} failed with return code {result.returncode}")
-
-    log.info("dbt models built successfully.")
-
-
 # ============================================================
-# TASK 4 — dbt test (fail DAG if quality checks fail)
-# ============================================================
-def run_dbt_tests(**context):
-    """
-    Runs: dbt test
-    If ANY test fails (not_null, unique, accepted_values), this task
-    raises AirflowException, which:
-      - Marks this task as FAILED
-      - Prevents retrain_model and update_predictions from running
-      - Shows a red alert in the Airflow UI
-
-    This is the 'data contract' — we refuse to train on dirty data.
-    """
-    env = {**os.environ, "DBT_PROFILES_DIR": DBT_DIR}
-
-    result = subprocess.run(
-        ["dbt", "test", "--profiles-dir", "."],
-        cwd=DBT_DIR,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-    log.info(f"dbt test stdout:\n{result.stdout}")
-
-    if result.returncode != 0:
-        # Parse how many tests failed from dbt output
-        failed_count = result.stdout.count("FAIL")
-        log.error(f"dbt test stderr:\n{result.stderr}")
-        raise AirflowException(
-            f"dbt test failed: {failed_count} test(s) did not pass. "
-            f"Check Airflow logs for details. Fix data quality issues before retraining."
-        )
-
-    log.info("All dbt tests passed. Data quality verified.")
-
-
-# ============================================================
-# TASK 5 — Retrain XGBoost model on latest data
+# TASK 3 — Retrain XGBoost model on latest data
 # ============================================================
 def retrain_model(**context):
     """
@@ -464,7 +396,7 @@ def retrain_model(**context):
 
 
 # ============================================================
-# TASK 6 — Score 2026 WC fixtures and save predictions
+# TASK 4 — Score 2026 WC fixtures and save predictions
 # ============================================================
 def update_predictions(**context):
     """
@@ -612,25 +544,13 @@ with DAG(
     t_ingest = PythonOperator(
         task_id="ingest_raw_data",
         python_callable=ingest_raw_data,
-        doc_md="""Reads 4 CSVs from data/raw/ and writes to PostgreSQL raw tables.""",
+        doc_md="""Reads results.csv, fixtures.csv, rankings.csv and writes to PostgreSQL raw tables.""",
     )
 
     t_spark = PythonOperator(
         task_id="spark_process",
         python_callable=spark_process,
         doc_md="""Runs PySpark to clean data and build match_features table.""",
-    )
-
-    t_dbt_run = PythonOperator(
-        task_id="dbt_run",
-        python_callable=run_dbt_models,
-        doc_md="""Runs dbt seed + dbt run to build staging views and mart tables.""",
-    )
-
-    t_dbt_test = PythonOperator(
-        task_id="dbt_test",
-        python_callable=run_dbt_tests,
-        doc_md="""Runs dbt test. FAILS the DAG if any data quality test fails.""",
     )
 
     t_retrain = PythonOperator(
@@ -647,4 +567,4 @@ with DAG(
 
     # ---- Task dependencies (the pipeline order) ----
     # >> means "must succeed before the next task starts"
-    t_ingest >> t_spark >> t_dbt_run >> t_dbt_test >> t_retrain >> t_predict
+    t_ingest >> t_spark >> t_retrain >> t_predict

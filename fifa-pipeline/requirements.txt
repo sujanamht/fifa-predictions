@@ -22,10 +22,6 @@ pyspark==3.5.1
 sqlalchemy==1.4.52
 psycopg2-binary==2.9.9   # PostgreSQL adapter (binary = no C compile needed)
 
-# --- dbt ---
-dbt-core==1.7.19
-dbt-postgres==1.7.19      # dbt adapter for PostgreSQL
-
 # --- Apache Airflow (2.9.x — stable LTS) ---
 # NOTE: Airflow has many sub-deps; install via constraints file for reproducibility:
 # pip install apache-airflow==2.9.2 --constraint \
