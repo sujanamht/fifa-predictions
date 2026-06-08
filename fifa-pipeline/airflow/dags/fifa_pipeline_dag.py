@@ -95,8 +95,9 @@ def ingest_raw_data(**context):
                 axis=1
             )
 
-        df.to_sql(table_name, engine, if_exists="replace", index=False,
-                  chunksize=1000, method="multi")
+        with engine.connect() as conn:
+            df.to_sql(table_name, conn, if_exists="replace", index=False,
+                      chunksize=1000, method="multi")
         log.info(f"Wrote {len(df):,} rows to {table_name}")
 
     engine.dispose()
@@ -301,8 +302,9 @@ def spark_process(**context):
         from sqlalchemy import create_engine as ce
         pdf = master.toPandas()
         eng = ce(os.environ["DATABASE_URL"])
-        pdf.to_sql("match_features", eng, if_exists="replace", index=False,
-                   chunksize=1000, method="multi")
+        with eng.connect() as conn:
+            pdf.to_sql("match_features", conn, if_exists="replace", index=False,
+                       chunksize=1000, method="multi")
         eng.dispose()
         log.info(f"match_features written via pandas fallback. Rows: {len(pdf):,}")
 
@@ -522,8 +524,9 @@ def update_predictions(**context):
     df_preds["confidence"]       = proba.max(axis=1).round(4)
     df_preds["predicted_at"]     = datetime.now().isoformat()
 
-    df_preds.to_sql("wc2026_predictions", engine, if_exists="replace",
-                    index=False, method="multi")
+    with engine.connect() as conn:
+        df_preds.to_sql("wc2026_predictions", conn, if_exists="replace",
+                        index=False, method="multi")
     log.info(f"Saved {len(df_preds)} predictions to wc2026_predictions.")
     engine.dispose()
 
