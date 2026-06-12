@@ -12,16 +12,16 @@ pyarrow==15.0.2
 pyspark==3.5.1
 
 # Database
-sqlalchemy==2.0.30
+sqlalchemy==1.4.52
 psycopg2-binary==2.9.9
 
 # dbt (task 3/4 — dbt_run, dbt_test)
-dbt-core==1.8.3
-dbt-postgres==1.8.3
+dbt-core==1.7.19
+dbt-postgres==1.7.19
 
 # ML (tasks 5/6 — retrain_model, update_predictions)
 scikit-learn==1.4.2
-xgboost==2.0.3
+xgboost==2.1.1
 joblib==1.4.2
 
 # Utilities

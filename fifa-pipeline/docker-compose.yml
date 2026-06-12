@@ -140,39 +140,35 @@ services:
   streamlit:
     image: python:3.10-slim
     container_name: fifa_streamlit
-    working_dir: /app
-    volumes:
-      - ./dashboard:/app                   # Dashboard source code
-      - ./models:/app/models               # Trained model artifacts
-      - ./.env:/app/.env                   # Secrets (DB connection)
-    env_file:
-      - .env
-    environment:
-      POSTGRES_HOST: postgres              # Connect to Docker postgres service
-    command: >
-      bash -c "
-        pip install --quiet --no-cache-dir
-          streamlit==1.35.0
-          plotly==5.22.0
-          pandas==2.2.2
-          psycopg2-binary==2.9.9
-          sqlalchemy==2.0.30
-          python-dotenv==1.0.1
-          joblib==1.4.2
-          xgboost==2.0.3
-          scikit-learn==1.4.2
-          numpy==1.26.4 &&
-        streamlit run app.py
-          --server.port=8501
-          --server.address=0.0.0.0
-          --server.headless=true
-          --browser.gatherUsageStats=false
-      "
     ports:
       - "8501:8501"
+    volumes:
+      - ./dashboard:/app/dashboard
+      - ./data:/app/data
+      - ./models:/app/models
+    working_dir: /app
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=fifa_db
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
+    command: >
+      bash -c "pip install --no-cache-dir
+      streamlit==1.35.0
+      psycopg2-binary==2.9.9
+      pandas==2.2.2
+      numpy==1.26.4
+      scikit-learn==1.4.2
+      xgboost==2.1.1
+      python-dotenv==1.0.1 &&
+      streamlit run dashboard/app.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+      --browser.gatherUsageStats=false"
     restart: unless-stopped
 
 # ============================================================
