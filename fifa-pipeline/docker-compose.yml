@@ -1,5 +1,3 @@
-version: "3.9"
-
 # ============================================================
 # FIFA WC 2026 Pipeline — Final Docker Compose
 #
@@ -148,11 +146,11 @@ services:
       - ./models:/app/models
     working_dir: /app
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=fifa_db
-      - POSTGRES_USER=airflow
-      - POSTGRES_PASSWORD=airflow
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: fifa_db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       - postgres
     command: >
@@ -164,7 +162,7 @@ services:
       scikit-learn==1.4.2
       xgboost==2.1.1
       python-dotenv==1.0.1 &&
-      streamlit run src/dashboard/app.py
+      streamlit run dashboard/app.py
       --server.port=8501
       --server.address=0.0.0.0
       --server.headless=true

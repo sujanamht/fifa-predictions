@@ -52,7 +52,7 @@ DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB",   "fifa_db")
 DB_USER = os.getenv("POSTGRES_USER", "fifa_user")
-DB_PASS = os.getenv("POSTGRES_PASSWORD", "fifa_pass123")
+DB_PASS = os.getenv("POSTGRES_PASSWORD")
 DB_URL  = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 MODELS_DIR = Path(__file__).parent / "models"
