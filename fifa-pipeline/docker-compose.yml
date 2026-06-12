@@ -164,7 +164,7 @@ services:
       scikit-learn==1.4.2
       xgboost==2.1.1
       python-dotenv==1.0.1 &&
-      streamlit run dashboard/app.py
+      streamlit run src/dashboard/app.py
       --server.port=8501
       --server.address=0.0.0.0
       --server.headless=true
